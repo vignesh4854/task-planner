@@ -40,6 +40,18 @@ jobs:
           cp native/*.java $JAVA_DIR/
           python3 native/patch_manifest.py android/app/src/main/AndroidManifest.xml
 
+      - name: Install the fixed signing key
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KS" ]; then
+            echo "::error::Secret DEBUG_KEYSTORE_B64 is missing. Add it in Settings > Secrets and variables > Actions, then re-run."
+            exit 1
+          fi
+          mkdir -p ~/.android
+          echo "$KS" | base64 -d > ~/.android/debug.keystore
+          keytool -list -keystore ~/.android/debug.keystore -storepass android | grep -i "fingerprint\|androiddebugkey"
+
       - name: Build debug APK
         run: |
           cd android

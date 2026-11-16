@@ -1,3 +1,6 @@
 node_modules
 dist
 android
+*.keystore
+*.jks
+ks.b64

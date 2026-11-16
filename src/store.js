@@ -143,3 +143,13 @@ export function newTask() {
 export function saveSettings(patch) {
   commit({ ...state, settings: { ...state.settings, ...patch } });
 }
+
+// Replace everything (used by "Import backup")
+export function replaceAll(d) {
+  commit({
+    tasks: d.tasks,
+    entries: d.entries || {},
+    cheatDays: d.cheatDays || {},
+    settings: { universal: null, ...(d.settings || {}) },
+  });
+}

@@ -5,7 +5,9 @@ import { recurSummary } from '../logic';
 import Settings from '../components/Settings';
 
 export default function TasksPage() {
-  const { tasks } = useStore();
+  const { tasks, settings: appSettings } = useStore();
+  const lastB = appSettings?.lastBackup ? new Date(appSettings.lastBackup).getTime() : 0;
+  const needBackup = tasks.length >= 2 && Date.now() - lastB > 14 * 86400000;
   const [edit, setEdit] = useState(undefined); // undefined=closed, null=new, task=edit
 
   const [settings, setSettings] = useState(false);
@@ -16,6 +18,12 @@ export default function TasksPage() {
         <h2 style={{ margin: 0 }}>My tasks</h2>
         <button className="btn sm2 soft" onClick={() => setSettings(true)}>⚙ Settings</button>
       </div>
+      {needBackup && (
+        <div className="warnbox tap" onClick={() => setSettings(true)}>
+          <div className="whead">💾 Back up your data</div>
+          <div className="sm">{lastB ? 'Your last backup is over 2 weeks old.' : 'You have not made a backup yet.'} Tap to export one — uninstalling the app erases everything else.</div>
+        </div>
+      )}
       {!tasks.length && (
         <div className="empty">
           <p>No tasks yet.</p>

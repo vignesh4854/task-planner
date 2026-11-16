@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sheet } from './ui';
 import SoundPicker from './SoundPicker';
 import { useStore, saveSettings } from '../store';
 import { isNative, scheduleTest, scheduleAll } from '../notify';
 import { startAlarm } from '../alarm';
 import { AlarmSound } from '../sounds';
+import { exportBackup, copyBackup, parseBackup, applyBackup } from '../backup';
 
 // Makers whose battery managers are known to kill closed apps and cancel their alarms
 const AGGRESSIVE = ['xiaomi', 'redmi', 'poco', 'oppo', 'realme', 'oneplus', 'vivo', 'iqoo', 'huawei', 'honor', 'samsung', 'tecno', 'infinix', 'itel', 'lenovo', 'motorola', 'asus', 'nothing'];
@@ -40,6 +41,40 @@ export default function Settings({ onClose }) {
   const state = useStore();
   const uni = state.settings?.universal || { name: '', path: '' };
   const [st, setSt] = useState(null);
+  const fileRef = useRef();
+  const last = state.settings?.lastBackup;
+
+  async function doExport() {
+    try {
+      await exportBackup();
+    } catch (e) {
+      if (!/cancel/i.test(String(e?.message || e))) alert('Could not export: ' + (e?.message || e));
+    }
+  }
+  async function doCopy() {
+    try {
+      await copyBackup();
+      alert('Backup copied. Paste it into a note or message to yourself.');
+    } catch (e) {
+      alert('Could not copy: ' + (e?.message || e));
+    }
+  }
+  async function doImport(ev) {
+    const f = ev.target.files?.[0];
+    ev.target.value = '';
+    if (!f) return;
+    try {
+      const p = parseBackup(await f.text());
+      const msg =
+        `Import ${p.counts.tasks} task(s) and ${p.counts.days} day record(s)?\n\nThis REPLACES everything currently in the app.` +
+        (p.counts.soundsReset ? `\n\nCustom alarm sounds are not part of a backup — ${p.counts.soundsReset} will need to be chosen again.` : '');
+      if (!confirm(msg)) return;
+      applyBackup(p);
+      alert('Backup imported.');
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  }
 
   async function refresh() {
     if (!AlarmSound) return;
@@ -84,6 +119,22 @@ export default function Settings({ onClose }) {
 
   return (
     <Sheet title="Settings" onClose={onClose}>
+      <section className="sec">
+        <h3><span className="sicon">💾</span>Backup</h3>
+        <p className="muted sm">
+          Your tasks live only on this phone. Save a backup file now and then (to Drive, WhatsApp, Files…). Uninstalling the app deletes everything that is not backed up.
+        </p>
+        <div className={'preview' + (last ? '' : ' warn')}>
+          {last ? `Last backup: ${new Date(last).toLocaleString()}` : 'No backup made yet'}
+        </div>
+        <div className="row">
+          <button className="btn" onClick={doExport}>Export backup</button>
+          <button className="btn ghost-b" onClick={() => fileRef.current.click()}>Import backup</button>
+        </div>
+        <input ref={fileRef} type="file" hidden accept=".json,application/json,text/plain" onChange={doImport} />
+        <button className="btn ghost-b" onClick={doCopy}>Copy backup as text</button>
+      </section>
+
       {isNative && (
         <section className="sec">
           <h3><span className="sicon">🩺</span>Alarm health check</h3>
